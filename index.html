@@ -31,12 +31,22 @@
 
       #terminal {
         height: 100%;
-        padding: 30px;
+        padding: 20px;
         box-sizing: border-box;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
         background: radial-gradient(circle at center, #16161e 0%, #0a0b10 100%);
+        scroll-behavior: smooth;
+      }
+
+      @media (max-width: 600px) {
+        #terminal { padding: 10px; }
+        .ascii-art { font-size: 3px; line-height: 1.1; overflow-x: hidden; white-space: pre; }
+        .prompt-text { font-size: 11px; margin-right: 5px; }
+        .output-line { font-size: 12px; }
+        .header-block { font-size: 14px; padding-left: 10px; }
+        .summary-item .value { font-size: 15px; }
       }
 
       .output-line {
@@ -44,6 +54,7 @@
         white-space: pre-wrap;
         line-height: 1.5;
         font-size: 14px;
+        word-break: break-word;
       }
 
       .prompt-line {
@@ -81,11 +92,17 @@
       }
 
       /* Banking Table Styles */
+      .bank-table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        margin: 15px 0;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+      }
       .bank-table {
         border-collapse: collapse;
         width: 100%;
-        margin: 15px 0;
-        border: 1px solid var(--border);
+        min-width: 600px;
       }
       .bank-table th {
         background: var(--border);
@@ -120,17 +137,66 @@
 
       .summary-card {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
         margin: 15px 0;
         padding: 15px;
         background: rgba(26, 27, 38, 0.8);
         border: 1px solid var(--border);
         border-radius: 8px;
       }
+      @media (max-width: 480px) {
+        .summary-card {
+          grid-template-columns: 1fr;
+        }
+      }
 
       .summary-item .label { color: var(--muted); font-size: 11px; text-transform: uppercase; margin-bottom: 5px; }
       .summary-item .value { font-size: 18px; font-weight: bold; }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: 40px 150px 1fr;
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        align-items: center;
+      }
+      @media (max-width: 600px) {
+        .form-row {
+          grid-template-columns: 30px 100px 1fr;
+          padding: 8px;
+          font-size: 13px;
+        }
+      }
+
+      .category-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      #chartsContainer {
+        margin-bottom: 20px;
+        width: 100%;
+      }
+      .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 15px;
+      }
+      .chart-card {
+        background: rgba(26, 27, 38, 0.5);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 15px;
+        height: 250px;
+        position: relative;
+      }
+      @media (max-width: 400px) {
+        .charts-grid { grid-template-columns: 1fr; }
+        .chart-card { height: 200px; }
+      }
 
       .suggestion-item {
         padding: 6px 12px;
@@ -183,7 +249,7 @@
   </head>
   <body>
     <div id="terminal" onclick="document.getElementById('commandInput').focus()">
-      <div class="ascii-art">
+      <div class="ascii-art" style="white-space: pre; font-family: monospace;">
  ███████╗██╗███╗   ██╗ █████╗ ███╗   ██╗███████╗ █████╗ ██████╗ ██████╗ 
  ██╔════╝██║████╗  ██║██╔══██╗████╗  ██║╚══███╔╝██╔══██╗██╔══██╗██╔══██╗
  █████╗  ██║██╔██╗ ██║███████║██╔██╗ ██║  ███╔╝ ███████║██████╔╝██║  ██║
@@ -193,13 +259,13 @@
       </div>
       <div class="output-line">FinanzaPro CLI v3.0.0 [Stable]</div>
       <div class="output-line">Escribe <span class="cmd-name">'help'</span> para ver los comandos disponibles.</div>
-      <div id="chartsContainer" style="display: none; margin-bottom: 20px; width: 100%;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-          <div class="card chart-card" style="padding: 10px; height: 200px; position: relative;">
+      <div id="chartsContainer" style="display: none;">
+        <div class="charts-grid">
+          <div class="chart-card">
             <div style="color: var(--yellow); font-size: 10px; font-weight: bold; margin-bottom: 5px; text-align: center;">INGRESOS VS GASTOS</div>
             <canvas id="mainChart"></canvas>
           </div>
-          <div class="card chart-card" style="padding: 10px; height: 200px; position: relative;">
+          <div class="chart-card">
             <div style="color: var(--yellow); font-size: 10px; font-weight: bold; margin-bottom: 5px; text-align: center;">GASTOS POR CATEGORÍA</div>
             <canvas id="categoryChart"></canvas>
           </div>

@@ -10,36 +10,24 @@ const input = document.getElementById('commandInput');
 const terminal = document.getElementById('terminal');
 const autocompleteBox = document.getElementById('autocomplete-box');
 
-const COMMANDS = ['help', 'ls', 'stats', 'ingreso', 'gasto', 'gestionar', 'export', 'clear', 'print', 'ls export', 'stats export'];
+const COMMANDS = ['menu', 'ls', 'stats', 'historico', 'consolidado', 'ingreso', 'gasto', 'gestionar', 'export', 'clear', 'print', 'ls export', 'stats export'];
 
 // Initialize
-async function init() {
-  await fetchTransactions();
+function init() {
+  fetchTransactions();
   input.addEventListener('keydown', handleInput);
   input.addEventListener('input', handleAutocomplete);
   input.focus();
   
   // Mostrar el menú al abrir la aplicación
-  printHelp();
+  printMenu();
 }
 
-async function fetchTransactions() {
-  try {
-    const res = await fetch('/api/transactions');
-    transactions = await res.json();
-  } catch (e) {
-    transactions = JSON.parse(localStorage.getItem('finanzapro_data') || '[]');
-  }
+function fetchTransactions() {
+  transactions = JSON.parse(localStorage.getItem('finanzapro_data') || '[]');
 }
 
-async function saveTransactions() {
-  try {
-    await fetch('/api/transactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(transactions)
-    });
-  } catch (e) {}
+function saveTransactions() {
   localStorage.setItem('finanzapro_data', JSON.stringify(transactions));
 }
 
@@ -58,7 +46,7 @@ function clearScreen() {
 
 function printNavigationFooter() {
   print('<div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; display: flex; justify-content: space-between;">' +
-    '<span>[help] Menú Principal</span>' +
+    '<span>[menu] Menú Principal</span>' +
     '<span>[clear] Limpiar Pantalla</span>' +
     '<span>SESIÓN ACTIVA: ' + new Date().toLocaleTimeString() + '</span>' +
     '</div>');
@@ -107,28 +95,7 @@ function handleInput(e) {
 }
 
 function handleAutocomplete() {
-  const val = input.value.trim().toLowerCase();
-  
-  // Autocomplete para categorías en el formulario
-  if (currentContext && currentContext.type === 'form' && currentContext.step === 2) {
-    const cats = CATEGORIES[currentContext.formType];
-    const suggestions = cats.filter(c => c.toLowerCase().startsWith(val));
-    if (suggestions.length > 0) {
-      renderSuggestions(suggestions);
-      autocompleteBox.style.display = 'block';
-    } else {
-      autocompleteBox.style.display = 'none';
-    }
-    return;
-  }
-
-  if (!val || currentContext) {
-    autocompleteBox.style.display = 'none';
-    selectedSuggestionIndex = -1;
-    return;
-  }
-
-  const suggestions = getSuggestions(val);
+  const suggestions = getSuggestions(input.value);
   if (suggestions.length > 0) {
     renderSuggestions(suggestions);
     autocompleteBox.style.display = 'block';
@@ -145,7 +112,16 @@ function renderSuggestions(suggestions) {
 }
 
 function getSuggestions(val) {
-  return COMMANDS.filter(c => c.startsWith(val.toLowerCase()));
+  const cleanVal = val.trim().toLowerCase();
+  
+  // Autocomplete para categorías en el formulario
+  if (currentContext && currentContext.type === 'form' && currentContext.step === 2) {
+    const cats = CATEGORIES[currentContext.formType];
+    return cats.filter(c => c.toLowerCase().startsWith(cleanVal));
+  }
+
+  if (!cleanVal || currentContext) return [];
+  return COMMANDS.filter(c => c.startsWith(cleanVal));
 }
 
 function applySuggestion(s) {
@@ -167,19 +143,25 @@ async function executeCommand(fullCmd) {
     return;
   }
 
+  if (currentContext && currentContext.type === 'history') {
+    handleHistoryInput(fullCmd);
+    return;
+  }
+
   const [cmd, ...args] = fullCmd.split(' ');
   const command = cmd.toLowerCase();
 
   // Comandos que disparan "navegación" (limpian pantalla)
-  const navigationCommands = ['help', 'ls', 'list', 'stats', 'export', 'ingreso', 'gasto'];
+  const navigationCommands = ['menu', 'ls', 'list', 'stats', 'export', 'ingreso', 'gasto'];
   
   if (navigationCommands.includes(command)) {
     clearScreen();
   }
   
   switch (command) {
+    case 'menu':
     case 'help':
-      printHelp();
+      printMenu();
       break;
     case 'ls':
     case 'list':
@@ -210,6 +192,12 @@ async function executeCommand(fullCmd) {
         showStats(parseInt(args[0]) || 1);
       }
       break;
+    case 'historico':
+      showHistoryMenu();
+      break;
+    case 'consolidado':
+      showAnnualConsolidated();
+      break;
     case 'clear':
       clearScreen();
       break;
@@ -220,7 +208,7 @@ async function executeCommand(fullCmd) {
       window.print();
       break;
     default:
-      print(`Comando no reconocido: ${cmd}. Escribe 'help' para ayuda.`, 'expense');
+      print(`Comando no reconocido: ${cmd}. Escribe 'menu' para ver las opciones.`, 'expense');
   }
 
   if (navigationCommands.includes(command) && !currentContext) {
@@ -275,7 +263,7 @@ function renderForm() {
     const marker = isCurrent ? `<span style="color: var(--yellow)">[>]</span>` : (currentContext.data[s.key] ? `<span style="color: var(--green)">[x]</span>` : `[ ]`);
     
     formHtml += `
-      <div style="display: grid; grid-template-columns: 40px 150px 1fr; padding: 12px; border-bottom: 1px solid var(--border); ${isCurrent ? 'background: rgba(224, 175, 104, 0.05);' : ''}">
+      <div class="form-row" style="${isCurrent ? 'background: rgba(224, 175, 104, 0.05);' : ''}">
         <span>${marker}</span>
         <span style="color: var(--yellow); font-weight: bold;">${s.label}:</span>
         <span style="color: #fff;">${value}</span>
@@ -288,7 +276,7 @@ function renderForm() {
   if (currentContext.step === 2) {
     print('<div style="color: var(--yellow); font-weight: bold; margin-bottom: 10px;">SELECCIONE CATEGORÍA (Escriba el nombre):</div>');
     const cats = CATEGORIES[currentContext.formType];
-    let catGrid = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">';
+    let catGrid = '<div class="category-grid">';
     cats.forEach(c => {
       catGrid += `<div style="color: var(--text); font-size: 13px;">[ ] ${c}</div>`;
     });
@@ -306,7 +294,7 @@ async function handleFormInput(val) {
     currentContext = null;
     clearScreen();
     print('Operación cancelada. Volviendo al menú principal...', 'expense');
-    printHelp();
+    printMenu();
     printNavigationFooter();
     return;
   }
@@ -380,18 +368,25 @@ function listTransactionsForManagement() {
   // Ordenar y guardar en el contexto para referencia por índice
   currentContext.list = [...transactions].sort((a,b) => b.id.localeCompare(a.id));
 
-  let tableHtml = '<table class="bank-table"><thead><tr><th>#</th><th>FECHA</th><th>TIPO</th><th>CATEGORÍA</th><th>DESCRIPCIÓN</th><th style="text-align: right">MONTO</th></tr></thead><tbody>';
+  let tableHtml = '<div class="bank-table-wrapper"><table class="bank-table"><thead><tr><th>#</th><th>FECHA_HORA</th><th>TIPO</th><th>CATEGORÍA</th><th>DESCRIPCIÓN</th><th style="text-align: right">MONTO</th></tr></thead><tbody>';
   currentContext.list.forEach((t, idx) => {
+    const dateTime = new Date(parseInt(t.id)).toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
     tableHtml += `<tr>
       <td style="color: var(--yellow); font-weight: bold;">[${idx + 1}]</td>
-      <td>${t.date}</td>
+      <td>${dateTime}</td>
       <td>${t.type === 'income' ? 'INC' : 'EXP'}</td>
       <td>${t.category}</td>
       <td>${t.description}</td>
       <td style="text-align: right">$${t.amount.toFixed(2)}</td>
     </tr>`;
   });
-  tableHtml += '</tbody></table>';
+  tableHtml += '</tbody></table></div>';
   print(tableHtml);
   print('<div style="color: var(--yellow); font-weight: bold;">INGRESE EL NÚMERO [1-' + currentContext.list.length + ']:</div>');
 }
@@ -402,7 +397,7 @@ async function handleManagementInput(val) {
   if (inputVal === 'menu' || inputVal === 'volver') {
     currentContext = null;
     clearScreen();
-    printHelp();
+    printMenu();
     printNavigationFooter();
     return;
   }
@@ -450,18 +445,54 @@ async function handleManagementInput(val) {
   }
 }
 
-function printHelp() {
+function printMenu() {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const monthData = transactions.filter(t => {
+    const d = new Date(parseInt(t.id));
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+
+  const totals = monthData.reduce((acc, t) => {
+    if (t.type === 'income') acc.income += t.amount;
+    else acc.expense += t.amount;
+    return acc;
+  }, { income: 0, expense: 0 });
+
+  const balance = totals.income - totals.expense;
+  const monthName = now.toLocaleString('es-ES', { month: 'long' }).toUpperCase();
+
   print('<div style="border: 2px solid var(--blue); padding: 15px; text-align: center; margin-bottom: 20px;">' +
     '<div style="color: var(--blue); font-weight: 900; font-size: 20px; letter-spacing: 2px;">FINANZAPRO - SISTEMA BANCARIO</div>' +
     '<div style="color: var(--muted); font-size: 10px; margin-top: 5px;">TERMINAL DE OPERACIONES FINANCIERAS v3.0</div>' +
     '</div>');
 
+  // Resumen del mes actual como un módulo discreto
+  print(`<div style="color: var(--yellow); font-weight: bold; margin-top: 15px; border-bottom: 1px solid var(--muted); padding-bottom: 2px;">[MODULO: RESUMEN ${monthName} ${currentYear}]</div>`);
+  
+  const stats = [
+    { label: 'INGRESOS', val: `+$${totals.income.toLocaleString(undefined, {minimumFractionDigits: 2})}`, color: 'var(--green)' },
+    { label: 'GASTOS', val: `-$${totals.expense.toLocaleString(undefined, {minimumFractionDigits: 2})}`, color: 'var(--red)' },
+    { label: 'BALANCE', val: `$${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}`, color: balance >= 0 ? 'var(--green)' : 'var(--red)' }
+  ];
+
+  stats.forEach(s => {
+    print(`<div style="display: flex; flex-wrap: wrap; padding: 2px 0; gap: 10px;">` +
+      `<span style="color: var(--muted); min-width: 100px; font-size: 13px;">${s.label}:</span>` +
+      `<span style="color: ${s.color}; flex: 1; font-weight: bold; font-size: 13px;">${s.val}</span>` +
+      `</div>`);
+  });
+
   const menuItems = [
-    { cat: 'CONSULTAS', cmd: 'ls', desc: 'Estado de cuenta detallado (Paginado)' },
-    { cat: 'CONSULTAS', cmd: 'stats', desc: 'Balance consolidado y análisis visual' },
-    { cat: 'OPERACIONES', cmd: 'ingreso', desc: 'Iniciar proceso de depósito (Crédito)' },
-    { cat: 'OPERACIONES', cmd: 'gasto', desc: 'Iniciar proceso de retiro (Débito)' },
-    { cat: 'OPERACIONES', cmd: 'gestionar', desc: 'Modificar o anular transacciones' }
+    { cat: 'CONSULTAS', cmd: 'ls', desc: 'Estado de cuenta detallado' },
+    { cat: 'CONSULTAS', cmd: 'stats', desc: 'Balance y análisis visual' },
+    { cat: 'CONSULTAS', cmd: 'historico', desc: 'Estadísticas mensuales' },
+    { cat: 'CONSULTAS', cmd: 'consolidado', desc: 'Reporte anual consolidado' },
+    { cat: 'OPERACIONES', cmd: 'ingreso', desc: 'Depósito (Crédito)' },
+    { cat: 'OPERACIONES', cmd: 'gasto', desc: 'Retiro (Débito)' },
+    { cat: 'OPERACIONES', cmd: 'gestionar', desc: 'Modificar transacciones' }
   ];
 
   let currentCat = '';
@@ -470,9 +501,9 @@ function printHelp() {
       currentCat = item.cat;
       print(`<div style="color: var(--yellow); font-weight: bold; margin-top: 15px; border-bottom: 1px solid var(--muted); padding-bottom: 2px;">[MODULO: ${currentCat}]</div>`);
     }
-    print(`<div style="display: flex; padding: 4px 0;">` +
-      `<span style="color: var(--green); width: 100px; font-weight: bold;">> ${item.cmd}</span>` +
-      `<span style="color: var(--text); flex: 1;">${item.desc}</span>` +
+    print(`<div style="display: flex; flex-wrap: wrap; padding: 4px 0; gap: 10px;">` +
+      `<span style="color: var(--green); min-width: 100px; font-weight: bold;">> ${item.cmd}</span>` +
+      `<span style="color: var(--text); flex: 1; min-width: 200px;">${item.desc}</span>` +
       `</div>`);
   });
 
@@ -503,11 +534,12 @@ function listTransactions(page = 1) {
   const pageItems = sortedTransactions.slice(start, end);
 
   let tableHtml = `
+    <div class="bank-table-wrapper">
     <table class="bank-table">
       <thead>
         <tr>
           <th>ID_REF</th>
-          <th>FECHA</th>
+          <th>FECHA_HORA</th>
           <th>TIPO</th>
           <th>CATEGORÍA</th>
           <th>DESCRIPCIÓN</th>
@@ -522,11 +554,18 @@ function listTransactions(page = 1) {
     const typeText = t.type === 'income' ? 'INC' : 'EXP';
     const amountClass = t.type === 'income' ? 'income' : 'expense';
     const id = t.id.slice(-8);
+    const dateTime = new Date(parseInt(t.id)).toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
     
     tableHtml += `
       <tr>
         <td style="color: var(--muted)">#${id}</td>
-        <td>${t.date}</td>
+        <td>${dateTime}</td>
         <td><span class="status-box ${typeClass}">${typeText}</span></td>
         <td>${t.category}</td>
         <td>${t.description}</td>
@@ -535,7 +574,7 @@ function listTransactions(page = 1) {
     `;
   });
 
-  tableHtml += '</tbody></table>';
+  tableHtml += '</tbody></table></div>';
   print(tableHtml);
 
   if (totalPages > 1) {
@@ -608,15 +647,15 @@ function showStats(page = 1) {
     <div class="summary-card">
       <div class="summary-item">
         <div class="label">Balance Neto</div>
-        <div class="value ${balance >= 0 ? 'income' : 'expense'}">$${balance.toLocaleString()}</div>
+        <div class="value ${balance >= 0 ? 'income' : 'expense'}">$${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
       </div>
       <div class="summary-item">
         <div class="label">Total Ingresos</div>
-        <div class="value income">+$${totals.income.toLocaleString()}</div>
+        <div class="value income">+$${totals.income.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
       </div>
       <div class="summary-item">
         <div class="label">Total Gastos</div>
-        <div class="value expense">-$${totals.expense.toLocaleString()}</div>
+        <div class="value expense">-$${totals.expense.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
       </div>
     </div>
   `;
@@ -640,10 +679,11 @@ function showStats(page = 1) {
   const pageItems = sortedTransactions.slice(start, end);
 
   let detailHtml = `
+    <div class="bank-table-wrapper">
     <table class="bank-table">
       <thead>
         <tr>
-          <th>FECHA_REGISTRO</th>
+          <th>FECHA_HORA</th>
           <th>TIPO</th>
           <th>CATEGORÍA</th>
           <th>DESCRIPCIÓN</th>
@@ -657,11 +697,17 @@ function showStats(page = 1) {
     const typeClass = t.type === 'income' ? 'bg-income' : 'bg-expense';
     const typeText = t.type === 'income' ? 'INC' : 'EXP';
     const amountClass = t.type === 'income' ? 'income' : 'expense';
-    const regDate = new Date(parseInt(t.id)).toLocaleDateString();
+    const dateTime = new Date(parseInt(t.id)).toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
     detailHtml += `
       <tr>
-        <td style="color: var(--muted); font-size: 11px;">${regDate}</td>
+        <td style="color: var(--muted); font-size: 11px;">${dateTime}</td>
         <td><span class="status-box ${typeClass}">${typeText}</span></td>
         <td>${t.category}</td>
         <td>${t.description}</td>
@@ -670,7 +716,7 @@ function showStats(page = 1) {
     `;
   });
 
-  detailHtml += '</tbody></table>';
+  detailHtml += '</tbody></table></div>';
   print(detailHtml);
   
   // Controles de paginación
@@ -691,7 +737,7 @@ function showStats(page = 1) {
 let mainChart = null;
 let categoryChart = null;
 
-function updateCharts() {
+function updateCharts(data = transactions) {
   const ctxMain = document.getElementById('mainChart');
   const ctxCat = document.getElementById('categoryChart');
 
@@ -699,7 +745,7 @@ function updateCharts() {
   if (categoryChart) categoryChart.destroy();
 
   // Data for main chart (Income vs Expense)
-  const totals = transactions.reduce((acc, t) => {
+  const totals = data.reduce((acc, t) => {
     if (t.type === 'income') acc.income += t.amount;
     else acc.expense += t.amount;
     return acc;
@@ -730,7 +776,7 @@ function updateCharts() {
   });
 
   // Data for category chart
-  const catData = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
+  const catData = data.filter(t => t.type === 'expense').reduce((acc, t) => {
     acc[t.category] = (acc[t.category] || 0) + t.amount;
     return acc;
   }, {});
@@ -790,8 +836,204 @@ function exportLS() {
   print('Exportación de Estado de Cuenta completada.', 'income');
 }
 
-function exportStats() {
-  exportPDF(); // El exportPDF actual ya hace el reporte completo tipo stats
+function showHistoryMenu() {
+  clearScreen();
+  const months = [];
+  transactions.forEach(t => {
+    const date = new Date(parseInt(t.id));
+    const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+    if (!months.includes(monthKey)) months.push(monthKey);
+  });
+  
+  months.sort().reverse();
+
+  print('<div class="header-block">ARCHIVO HISTÓRICO DE ESTADÍSTICAS</div>');
+  
+  if (months.length === 0) {
+    print('No hay datos históricos suficientes.');
+    printNavigationFooter();
+    return;
+  }
+
+  print('<div style="color: var(--muted); margin-bottom: 15px;">Seleccione el periodo mensual para generar el reporte:</div>');
+  
+  currentContext = { type: 'history', list: months };
+  
+  months.forEach((m, idx) => {
+    const [year, month] = m.split('-');
+    const monthName = new Date(year, month - 1).toLocaleString('es-ES', { month: 'long' }).toUpperCase();
+    print(`<div style="color: var(--yellow); font-weight: bold; padding: 5px 0;">[${idx + 1}] ${monthName} ${year}</div>`);
+  });
+
+  print('<div style="margin-top: 15px; color: var(--yellow); font-weight: bold;">INGRESE EL NÚMERO [1-' + months.length + ']:</div>');
+  print('<div style="color: var(--muted); font-size: 11px;">Escriba <span style="color: var(--red)">menu</span> para cancelar.</div>');
+}
+
+function handleHistoryInput(val) {
+  const inputVal = val.trim().toLowerCase();
+  if (inputVal === 'menu' || inputVal === 'volver') {
+    currentContext = null;
+    clearScreen();
+    printMenu();
+    printNavigationFooter();
+    return;
+  }
+
+  const idx = parseInt(inputVal) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= currentContext.list.length) {
+    print('Error: Selección inválida.', 'expense');
+    return;
+  }
+
+  const selectedMonth = currentContext.list[idx];
+  currentContext = null;
+  showStatsForMonth(selectedMonth);
+}
+
+function showStatsForMonth(monthKey) {
+  const [year, month] = monthKey.split('-');
+  const filtered = transactions.filter(t => {
+    const d = new Date(parseInt(t.id));
+    return d.getFullYear() === parseInt(year) && (d.getMonth() + 1) === parseInt(month);
+  });
+
+  const totals = filtered.reduce((acc, t) => {
+    if (t.type === 'income') acc.income += t.amount;
+    else acc.expense += t.amount;
+    return acc;
+  }, { income: 0, expense: 0 });
+
+  const balance = totals.income - totals.expense;
+  const monthName = new Date(year, month - 1).toLocaleString('es-ES', { month: 'long' }).toUpperCase();
+
+  clearScreen();
+  print(`<div class="header-block">REPORTE HISTÓRICO: ${monthName} ${year}</div>`);
+  
+  // 1. Graficas para el mes seleccionado
+  const chartsContainer = document.getElementById('chartsContainer');
+  chartsContainer.style.display = 'block';
+  updateCharts(filtered);
+
+  // 2. Resumen
+  const summaryHtml = `
+    <div class="summary-card">
+      <div class="summary-item">
+        <div class="label">Balance Mensual</div>
+        <div class="value ${balance >= 0 ? 'income' : 'expense'}">$${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">Ingresos Periodo</div>
+        <div class="value income">+$${totals.income.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">Gastos Periodo</div>
+        <div class="value expense">-$${totals.expense.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+      </div>
+    </div>
+  `;
+  print(summaryHtml);
+
+  if (filtered.length > 0) {
+    let tableHtml = '<div class="bank-table-wrapper"><table class="bank-table"><thead><tr><th>FECHA_HORA</th><th>TIPO</th><th>CATEGORÍA</th><th style="text-align: right">MONTO</th></tr></thead><tbody>';
+    filtered.sort((a,b) => b.id.localeCompare(a.id)).forEach(t => {
+      const dateTime = new Date(parseInt(t.id)).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      tableHtml += `<tr>
+        <td>${dateTime}</td>
+        <td>${t.type === 'income' ? 'INC' : 'EXP'}</td>
+        <td>${t.category}</td>
+        <td style="text-align: right" class="${t.type === 'income' ? 'income' : 'expense'}">$${t.amount.toFixed(2)}</td>
+      </tr>`;
+    });
+    tableHtml += '</tbody></table></div>';
+    print(tableHtml);
+  } else {
+    print('No hay movimientos para este periodo.');
+  }
+  
+  printNavigationFooter();
+}
+
+function showAnnualConsolidated() {
+  clearScreen();
+  const annualData = {};
+  
+  transactions.forEach(t => {
+    const date = new Date(parseInt(t.id));
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const key = `${year}-${month}`;
+    
+    if (!annualData[key]) {
+      annualData[key] = { year, month, income: 0, expense: 0 };
+    }
+    
+    if (t.type === 'income') annualData[key].income += t.amount;
+    else annualData[key].expense += t.amount;
+  });
+
+  const sortedKeys = Object.keys(annualData).sort((a, b) => {
+    const [yA, mA] = a.split('-').map(Number);
+    const [yB, mB] = b.split('-').map(Number);
+    return yA !== yB ? yB - yA : mB - mA;
+  });
+
+  print('<div class="header-block">REPORTE CONSOLIDADO ANUAL</div>');
+  
+  if (sortedKeys.length === 0) {
+    print('No hay datos suficientes para generar el consolidado.');
+    printNavigationFooter();
+    return;
+  }
+
+  let tableHtml = `
+    <div class="bank-table-wrapper">
+    <table class="bank-table">
+      <thead>
+        <tr>
+          <th>PERIODO (MES/AÑO)</th>
+          <th style="text-align: right">INGRESOS</th>
+          <th style="text-align: right">GASTOS</th>
+          <th style="text-align: right">BALANCE</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  let totalYearIncome = 0;
+  let totalYearExpense = 0;
+
+  sortedKeys.forEach(key => {
+    const data = annualData[key];
+    const monthName = new Date(data.year, data.month).toLocaleString('es-ES', { month: 'long' }).toUpperCase();
+    const balance = data.income - data.expense;
+    
+    totalYearIncome += data.income;
+    totalYearExpense += data.expense;
+
+    tableHtml += `
+      <tr>
+        <td style="font-weight: bold; color: var(--yellow);">${monthName} ${data.year}</td>
+        <td style="text-align: right" class="income">+$${data.income.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <td style="text-align: right" class="expense">-$${data.expense.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <td style="text-align: right; font-weight: bold;" class="${balance >= 0 ? 'income' : 'expense'}">$${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+      </tr>
+    `;
+  });
+
+  const totalBalance = totalYearIncome - totalYearExpense;
+  tableHtml += `
+    <tr style="border-top: 2px solid var(--blue); background: rgba(137, 180, 250, 0.1);">
+      <td style="font-weight: 900; color: var(--blue);">TOTAL ACUMULADO</td>
+      <td style="text-align: right; font-weight: 900;" class="income">+$${totalYearIncome.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+      <td style="text-align: right; font-weight: 900;" class="expense">-$${totalYearExpense.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+      <td style="text-align: right; font-weight: 900;" class="${totalBalance >= 0 ? 'income' : 'expense'}">$${totalBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+    </tr>
+  `;
+
+  tableHtml += '</tbody></table></div>';
+  print(tableHtml);
+  
+  printNavigationFooter();
 }
 
 function exportPDF() {
