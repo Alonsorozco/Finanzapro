@@ -17,6 +17,19 @@ function init() {
   fetchTransactions();
   input.addEventListener('keydown', handleInput);
   input.addEventListener('input', handleAutocomplete);
+  
+  const mobileSendBtn = document.getElementById('mobileSendBtn');
+  if (mobileSendBtn) {
+    mobileSendBtn.addEventListener('click', () => {
+      const cmd = input.value.trim();
+      if (cmd) {
+        executeCommand(cmd);
+        input.value = '';
+        autocompleteBox.style.display = 'none';
+      }
+    });
+  }
+
   input.focus();
   
   // Mostrar el menú al abrir la aplicación

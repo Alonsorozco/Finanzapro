@@ -82,6 +82,37 @@
         font-size: 15px;
         width: 100%;
         outline: none;
+        padding: 5px 0;
+      }
+
+      .mobile-send-btn {
+        display: none;
+        background: #000;
+        color: var(--yellow);
+        border: 1px solid var(--yellow);
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 10px;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(224, 175, 104, 0.2);
+        flex-shrink: 0;
+        font-size: 18px;
+        transition: all 0.2s ease;
+      }
+      .mobile-send-btn:active {
+        background: var(--yellow);
+        color: #000;
+        transform: scale(0.9);
+      }
+
+      @media (max-width: 768px) {
+        .mobile-send-btn {
+          display: flex;
+        }
       }
 
       .ascii-art {
@@ -276,6 +307,7 @@
         <span class="prompt-text">finanzapro@localhost:~$</span>
         <div style="flex: 1; position: relative; display: flex; align-items: center;">
           <input type="text" id="commandInput" autofocus spellcheck="false" autocomplete="off">
+          <button id="mobileSendBtn" class="mobile-send-btn">➜</button>
           <div id="autocomplete-box" style="display: none; position: absolute; bottom: 100%; left: 0; background: var(--term-bg); border: 1px solid var(--yellow); border-radius: 2px; padding: 0; z-index: 100; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); min-width: 200px; margin-bottom: 5px;"></div>
         </div>
       </div>
