@@ -1,6 +1,6 @@
 {
   "name": "FinanzaPro - Panel de Gestión Financiera",
-  "description": "Una aplicación profesional para el seguimiento de ingresos y gastos con reportes detallados y exportación a PDF.",
+  "description": "Una aplicación profesional para el seguimiento de ingresos y gastos con reportes detallados, exportación a PDF y versión portátil en Java.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
