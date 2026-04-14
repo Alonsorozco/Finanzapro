@@ -274,14 +274,22 @@ function renderForm() {
   print(formHtml);
 
   if (currentContext.step === 2) {
-    print('<div style="color: var(--yellow); font-weight: bold; margin-bottom: 10px;">SELECCIONE CATEGORÍA (Escriba el nombre):</div>');
+    print('<div style="color: var(--yellow); font-weight: bold; margin-bottom: 10px;">SELECCIONE CATEGORÍA (Escriba o toque una):</div>');
     const cats = CATEGORIES[currentContext.formType];
     let catGrid = '<div class="category-grid">';
     cats.forEach(c => {
-      catGrid += `<div style="color: var(--text); font-size: 13px;">[ ] ${c}</div>`;
+      catGrid += `<div class="suggestion-item" style="border: 1px solid var(--border); border-radius: 4px; text-align: center; padding: 10px;" onclick="executeCommand('${c}')">${c}</div>`;
     });
     catGrid += '</div>';
     print(catGrid);
+  }
+
+  // Ajustar inputmode para móviles
+  if (currentContext.step === 0) {
+    input.setAttribute('inputmode', 'decimal');
+    input.setAttribute('type', 'text'); // Mantener text para evitar estilos nativos de number
+  } else {
+    input.removeAttribute('inputmode');
   }
 
   print(`<div style="color: var(--muted); font-size: 12px;">INSTRUCCIÓN: Ingrese el valor para <span style="color: var(--yellow)">${steps[currentContext.step].label}</span> y presione ENTER.</div>`);
@@ -344,6 +352,7 @@ async function handleFormInput(val) {
     
     await saveTransactions();
     currentContext = null;
+    input.removeAttribute('inputmode');
     clearScreen();
     print('<div class="header-block" style="border-color: var(--green)">OPERACIÓN EXITOSA</div>');
     print(`Se ha procesado la transacción correctamente.`, 'income');
