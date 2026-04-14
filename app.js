@@ -21,6 +21,9 @@ function init() {
   const mobileSendBtn = document.getElementById('mobileSendBtn');
   if (mobileSendBtn) {
     mobileSendBtn.addEventListener('click', () => {
+      playClickSound();
+      if (navigator.vibrate) navigator.vibrate(10);
+      
       const cmd = input.value.trim();
       if (cmd) {
         executeCommand(cmd);
@@ -34,6 +37,35 @@ function init() {
   
   // Mostrar el menú al abrir la aplicación
   printMenu();
+}
+
+let audioCtx = null;
+
+function playClickSound() {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.1);
+  } catch (e) {}
 }
 
 function fetchTransactions() {

@@ -29,8 +29,31 @@
         overflow: hidden;
       }
 
-      #terminal {
+      /* Chrome, Edge, and Safari Scrollbar Styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
+      }
+
+      /* Fix for Chrome mobile address bar height */
+      html, body {
         height: 100%;
+        height: -webkit-fill-available;
+        overflow: hidden;
+      }
+      #terminal {
+        height: 100vh;
+        height: -webkit-fill-available;
         padding: 20px;
         box-sizing: border-box;
         overflow-y: auto;
@@ -89,24 +112,30 @@
         display: none;
         background: #000;
         color: var(--yellow);
-        border: 1px solid var(--yellow);
+        border: 2px solid var(--yellow);
         border-radius: 50%;
-        width: 36px;
-        height: 36px;
+        width: 44px;
+        height: 44px;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-left: 10px;
         cursor: pointer;
-        box-shadow: 0 0 10px rgba(224, 175, 104, 0.2);
+        box-shadow: 0 0 15px rgba(224, 175, 104, 0.2);
         flex-shrink: 0;
-        font-size: 18px;
-        transition: all 0.2s ease;
+        font-size: 20px;
+        transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        /* Chrome fix for button alignment */
+        line-height: 1;
+        padding: 0;
       }
       .mobile-send-btn:active {
         background: var(--yellow);
         color: #000;
-        transform: scale(0.9);
+        transform: scale(0.85);
+        box-shadow: 0 0 20px var(--yellow);
       }
 
       @media (max-width: 768px) {
